@@ -71,29 +71,35 @@ pub enum EditCommand<'a> {
     RenderLines(usize, usize), // first line, last line
     Key(&'a str, u64), // chars, flags
     Insert(&'a str), // chars
-    DeleteForward,
-    DeleteBackward,
-    DeleteToEndOfParagraph,
-    DeleteToBeginningOfLine,
     InsertNewline,
-    MoveUp,
-    MoveUpAndModifySelection,
-    MoveDown,
-    MoveDownAndModifySelection,
-    MoveLeft,
-    MoveLeftAndModifySelection,
-    MoveRight,
-    MoveRightAndModifySelection,
-    MoveToBeginningOfParagraph,
-    MoveToEndOfParagraph,
-    MoveToLeftEndOfLine,
-    MoveToLeftEndOfLineAndModifySelection,
-    MoveToRightEndOfLine,
-    MoveToRightEndOfLineAndModifySelection,
-    MoveToBeginningOfDocument,
-    MoveToBeginningOfDocumentAndModifySelection,
-    MoveToEndOfDocument,
-    MoveToEndOfDocumentAndModifySelection,
+
+    // DeleteForward,
+    // DeleteBackward,
+    // DeleteToEndOfParagraph,
+    // DeleteToBeginningOfLine,
+
+    // MoveUp,
+    // MoveUpAndModifySelection,
+    // MoveDown,
+    // MoveDownAndModifySelection,
+    // MoveLeft,
+    // MoveLeftAndModifySelection,
+    // MoveRight,
+    // MoveRightAndModifySelection,
+    // MoveToBeginningOfParagraph,
+    // MoveToEndOfParagraph,
+    // MoveToLeftEndOfLine,
+    // MoveToLeftEndOfLineAndModifySelection,
+    // MoveToRightEndOfLine,
+    // MoveToRightEndOfLineAndModifySelection,
+    // MoveToBeginningOfDocument,
+    // MoveToBeginningOfDocumentAndModifySelection,
+    // MoveToEndOfDocument,
+    // MoveToEndOfDocumentAndModifySelection,
+
+    Delete(EditMotion), // edit motion
+    Move(EditMotion, bool), // edit motion, modify selection?
+
     ScrollPageUp,
     PageUpAndModifySelection,
     ScrollPageDown,
@@ -111,6 +117,24 @@ pub enum EditCommand<'a> {
     Copy,
     DebugRewrap,
     DebugTestFgSpans,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum EditMotion {
+    PrevChar,
+    NextChar,
+    PrevLine,
+    NextLine,
+    StartOfLine,
+    StartOfDocument,
+    EndOfLine,
+    EndOfDocument,
+
+    // TODO: Also implement these motions:
+    // PrevWordStart,
+    // NextWordStart,
+    // PrevWordEnd,
+    // NextWordEnd,
 }
 
 impl<'a> TabCommand<'a> {
@@ -169,29 +193,46 @@ impl<'a> EditCommand<'a> {
                 dict_get_string(dict, "chars").map(|chars| Insert(chars))
             }).ok_or(MalformedEditParams(method.to_string(), params.clone())),
 
-            "delete_forward" => Ok(DeleteForward),
-            "delete_backward" => Ok(DeleteBackward),
-            "delete_to_end_of_paragraph" => Ok(DeleteToEndOfParagraph),
-            "delete_to_beginning_of_line" => Ok(DeleteToBeginningOfLine),
             "insert_newline" => Ok(InsertNewline),
-            "move_up" => Ok(MoveUp),
-            "move_up_and_modify_selection" => Ok(MoveUpAndModifySelection),
-            "move_down" => Ok(MoveDown),
-            "move_down_and_modify_selection" => Ok(MoveDownAndModifySelection),
-            "move_left" | "move_backward" => Ok(MoveLeft),
-            "move_left_and_modify_selection" => Ok(MoveLeftAndModifySelection),
-            "move_right" | "move_forward" => Ok(MoveRight),
-            "move_right_and_modify_selection" => Ok(MoveRightAndModifySelection),
-            "move_to_beginning_of_paragraph" => Ok(MoveToBeginningOfParagraph),
-            "move_to_end_of_paragraph" => Ok(MoveToEndOfParagraph),
-            "move_to_left_end_of_line" => Ok(MoveToLeftEndOfLine),
-            "move_to_left_end_of_line_and_modify_selection" => Ok(MoveToLeftEndOfLineAndModifySelection),
-            "move_to_right_end_of_line" => Ok(MoveToRightEndOfLine),
-            "move_to_right_end_of_line_and_modify_selection" => Ok(MoveToRightEndOfLineAndModifySelection),
-            "move_to_beginning_of_document" => Ok(MoveToBeginningOfDocument),
-            "move_to_beginning_of_document_and_modify_selection" => Ok(MoveToBeginningOfDocumentAndModifySelection),
-            "move_to_end_of_document" => Ok(MoveToEndOfDocument),
-            "move_to_end_of_document_and_modify_selection" => Ok(MoveToEndOfDocumentAndModifySelection),
+
+            // "delete_forward" => Ok(DeleteForward),
+            // "delete_backward" => Ok(DeleteBackward),
+            // "delete_to_end_of_paragraph" => Ok(DeleteToEndOfParagraph),
+            // "delete_to_beginning_of_line" => Ok(DeleteToBeginningOfLine),
+            // "move_up" => Ok(MoveUp),
+            // "move_up_and_modify_selection" => Ok(MoveUpAndModifySelection),
+            // "move_down" => Ok(MoveDown),
+            // "move_down_and_modify_selection" => Ok(MoveDownAndModifySelection),
+            // "move_left" | "move_backward" => Ok(MoveLeft),
+            // "move_left_and_modify_selection" => Ok(MoveLeftAndModifySelection),
+            // "move_right" | "move_forward" => Ok(MoveRight),
+            // "move_right_and_modify_selection" => Ok(MoveRightAndModifySelection),
+            // "move_to_beginning_of_paragraph" => Ok(MoveToBeginningOfParagraph),
+            // "move_to_end_of_paragraph" => Ok(MoveToEndOfParagraph),
+            // "move_to_left_end_of_line" => Ok(MoveToLeftEndOfLine),
+            // "move_to_left_end_of_line_and_modify_selection" => Ok(MoveToLeftEndOfLineAndModifySelection),
+            // "move_to_right_end_of_line" => Ok(MoveToRightEndOfLine),
+            // "move_to_right_end_of_line_and_modify_selection" => Ok(MoveToRightEndOfLineAndModifySelection),
+            // "move_to_beginning_of_document" => Ok(MoveToBeginningOfDocument),
+            // "move_to_beginning_of_document_and_modify_selection" => Ok(MoveToBeginningOfDocumentAndModifySelection),
+            // "move_to_end_of_document" => Ok(MoveToEndOfDocument),
+            // "move_to_end_of_document_and_modify_selection" => Ok(MoveToEndOfDocumentAndModifySelection),
+
+            "delete" => params.as_object().and_then(|dict| {
+                dict_get_string(dict, "motion").and_then(EditMotion::from_str).map(Delete)
+            }).ok_or(MalformedEditParams(method.to_string(), params.clone())),
+
+            "move" => params.as_object().and_then(|dict| {
+                if let (Some(motion), Some(modify_selection)) =
+                    (dict_get_string(dict, "motion").and_then(EditMotion::from_str),
+                     dict_get_bool(dict, "modify_selection")) {
+
+                        Some(Move(motion, modify_selection))
+                    } else {
+                        None
+                    }
+            }).ok_or(MalformedEditParams(method.to_string(), params.clone())),
+
             "scroll_page_up" | "page_up" => Ok(ScrollPageUp),
             "page_up_and_modify_selection" => Ok(PageUpAndModifySelection),
             "scroll_page_down" |
@@ -241,6 +282,24 @@ impl<'a> EditCommand<'a> {
             "debug_test_fg_spans" => Ok(DebugTestFgSpans),
 
             _ => Err(UnknownEditMethod(method.to_string())),
+        }
+    }
+}
+
+impl EditMotion {
+    fn from_str(motion: &str) -> Option<Self> {
+        use self::EditMotion::*;
+
+        match motion {
+            "prev_char" => Some(PrevChar),
+            "next_char" => Some(NextChar),
+            "prev_line" => Some(PrevLine),
+            "next_line" => Some(NextLine),
+            "start_of_line" => Some(StartOfLine),
+            "end_of_line" => Some(EndOfLine),
+            "start_of_document" => Some(StartOfDocument),
+            "end_of_document" => Some(EndOfDocument),
+            _ => None
         }
     }
 }
@@ -301,6 +360,10 @@ fn dict_get_u64(dict: &BTreeMap<String, Value>, key: &str) -> Option<u64> {
 
 fn dict_get_string<'a>(dict: &'a BTreeMap<String, Value>, key: &str) -> Option<&'a str> {
     dict.get(key).and_then(|v| v.as_string())
+}
+
+fn dict_get_bool(dict: &BTreeMap<String, Value>, key: &str) -> Option<bool> {
+    dict.get(key).and_then(|v| v.as_boolean())
 }
 
 fn arr_get_u64(arr: &[Value], idx: usize) -> Option<u64> {

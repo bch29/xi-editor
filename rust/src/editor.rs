@@ -27,7 +27,7 @@ use xi_rope::engine::Engine;
 use view::View;
 
 use tabs::update_tab;
-use rpc::EditCommand;
+use rpc::{EditCommand, EditMotion};
 
 const FLAG_SELECT: u64 = 2;
 
@@ -629,12 +629,46 @@ impl Editor {
         self.insert(&*String::from(data.clone()));
     }
 
+    fn do_move(&mut self, motion: EditMotion, modify_selection: bool) {
+        use rpc::EditMotion::*;
+
+        let flags = if modify_selection { FLAG_SELECT } else { 0 };
+
+        match motion {
+            PrevChar => self.move_left(flags),
+            NextChar => self.move_right(flags),
+            PrevLine => self.move_up(flags),
+            NextLine => self.move_down(flags),
+            StartOfLine => self.move_to_left_end_of_line(flags),
+            StartOfDocument => self.move_to_beginning_of_document(flags),
+            EndOfLine => self.move_to_right_end_of_line(flags),
+            EndOfDocument => self.move_to_end_of_document(flags),
+        }
+    }
+
+    // TODO: Implement the unimplemented motions
+    fn do_delete(&mut self, motion: EditMotion) {
+        use rpc::EditMotion::*;
+
+        match motion {
+            PrevChar => self.delete_backward(),
+            NextChar => self.delete_forward(),
+            PrevLine => unimplemented!(),
+            NextLine => unimplemented!(),
+            StartOfLine => self.delete_to_beginning_of_line(),
+            StartOfDocument => unimplemented!(),
+            EndOfLine => unimplemented!(),
+            EndOfDocument => unimplemented!(),
+        }
+    }
+
     pub fn do_rpc(&mut self,
                   cmd: EditCommand,
                   kill_ring: &Mutex<Rope>)
                   -> Option<Value> {
 
         use rpc::EditCommand::*;
+        use rpc::EditMotion::*;
 
         self.this_edit_type = EditType::Other;
 
@@ -644,31 +678,9 @@ impl Editor {
             }
             Key(chars, flags) => async(self.do_key(chars, flags)),
             Insert(chars) => async(self.do_insert(chars)),
-            DeleteForward => async(self.delete_forward()),
-            DeleteBackward => async(self.delete_backward()),
-            DeleteToEndOfParagraph => {
-                async(self.delete_to_end_of_paragraph(kill_ring))
-            }
-            DeleteToBeginningOfLine => async(self.delete_to_beginning_of_line()),
             InsertNewline => async(self.insert_newline()),
-            MoveUp => async(self.move_up(0)),
-            MoveUpAndModifySelection => async(self.move_up(FLAG_SELECT)),
-            MoveDown => async(self.move_down(0)),
-            MoveDownAndModifySelection => async(self.move_down(FLAG_SELECT)),
-            MoveLeft => async(self.move_left(0)),
-            MoveLeftAndModifySelection => async(self.move_left(FLAG_SELECT)),
-            MoveRight => async(self.move_right(0)),
-            MoveRightAndModifySelection => async(self.move_right(FLAG_SELECT)),
-            MoveToBeginningOfParagraph => async(self.cursor_start()),
-            MoveToEndOfParagraph => async(self.cursor_end()),
-            MoveToLeftEndOfLine => async(self.move_to_left_end_of_line(0)),
-            MoveToLeftEndOfLineAndModifySelection => async(self.move_to_left_end_of_line(FLAG_SELECT)),
-            MoveToRightEndOfLine => async(self.move_to_right_end_of_line(0)),
-            MoveToRightEndOfLineAndModifySelection => async(self.move_to_right_end_of_line(FLAG_SELECT)),
-            MoveToBeginningOfDocument => async(self.move_to_beginning_of_document(0)),
-            MoveToBeginningOfDocumentAndModifySelection => async(self.move_to_beginning_of_document(FLAG_SELECT)),
-            MoveToEndOfDocument => async(self.move_to_end_of_document(0)),
-            MoveToEndOfDocumentAndModifySelection => async(self.move_to_end_of_document(FLAG_SELECT)),
+            Move(motion, modify_selection) => async(self.do_move(motion, modify_selection)),
+            Delete(motion) => async(self.do_delete(motion)),
             ScrollPageUp => async(self.scroll_page_up(0)),
             PageUpAndModifySelection => async(self.scroll_page_up(FLAG_SELECT)),
             ScrollPageDown => async(self.scroll_page_down(0)),
