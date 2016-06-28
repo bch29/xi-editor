@@ -668,6 +668,7 @@ impl Editor {
                   -> Option<Value> {
 
         use rpc::EditCommand::*;
+        use rpc::EditMotion::*;
 
         self.this_edit_type = EditType::Other;
 
@@ -675,8 +676,8 @@ impl Editor {
             RenderLines { first_line, last_line } => {
                 Some(self.do_render_lines(first_line, last_line))
             }
-            Key { chars, flags } => async(self.do_key(chars.as_str(), flags)),
-            Insert { chars } => async(self.do_insert(chars.as_str())),
+            Key { chars, flags } => async(self.do_key(chars, flags)),
+            Insert { chars } => async(self.do_insert(chars)),
             InsertNewline => async(self.insert_newline()),
             Move { motion, modify_selection } => async(self.do_move(motion, modify_selection)),
             Delete { motion } => async(self.do_delete(motion)),
@@ -686,8 +687,8 @@ impl Editor {
             PageDownAndModifySelection => {
                 async(self.scroll_page_down(FLAG_SELECT))
             }
-            Open { file_path } => async(self.do_open(file_path.as_str())),
-            Save { file_path } => async(self.do_save(file_path.as_str())),
+            Open { file_path } => async(self.do_open(file_path)),
+            Save { file_path } => async(self.do_save(file_path)),
             Scroll { first, last } => async(self.do_scroll(first, last)),
             Yank => async(self.yank(kill_ring)),
             Transpose => async(self.do_transpose()),

@@ -1,9 +1,0 @@
-[package]
-name = "rpc"
-version = "0.1.0"
-authors = ["brad <bradleyhardy@live.com>"]
-
-[dependencies]
-serde = "*"
-serde_macros = "*"
-serde_json = "*"

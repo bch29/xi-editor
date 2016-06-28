@@ -45,11 +45,11 @@ impl Tabs {
             NewTab => Some(Value::String(self.do_new_tab())),
 
             DeleteTab { tab_name } => {
-                self.do_delete_tab(tab_name.as_str());
+                self.do_delete_tab(tab_name);
                 None
             },
 
-            Edit { tab_name, edit_command } => self.do_edit(tab_name.as_str(), edit_command),
+            Edit { tab_name, edit_command } => self.do_edit(tab_name, edit_command),
         }
     }
 
