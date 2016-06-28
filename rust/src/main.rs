@@ -16,9 +16,11 @@ extern crate serde;
 extern crate serde_json;
 extern crate time;
 
+extern crate xi_rope;
+extern crate xi_unicode;
+
 use std::io;
 use std::io::BufRead;
-use serde_json::Value;
 
 #[macro_use]
 mod macros;
@@ -32,13 +34,10 @@ mod rpc;
 use tabs::Tabs;
 use rpc::Request;
 
-extern crate xi_rope;
-extern crate xi_unicode;
-
 pub fn handle_req(request: Request, tabs: &mut Tabs) {
     match request {
-        Request::TabCommand(id, cmd) => {
-            if let Some(result) = tabs.do_rpc(cmd) {
+        Request::TabCommand { id, tab_command } => {
+            if let Some(result) = tabs.do_rpc(tab_command) {
                 rpc::respond(&result, id);
             } else if let Some(id) = id {
                 print_err!("RPC with id={:?} not responded", id);
@@ -59,12 +58,9 @@ fn main() {
             break;
         }
 
-        if let Ok(data) = serde_json::from_slice::<Value>(buf.as_bytes()) {
-            print_err!("to core: {:?}", data);
-            match Request::from_json(&data) {
-                Ok(req) => handle_req(req, &mut tabs),
-                Err(e) => print_err!("RPC error with id={:?}: {}", data.as_object().and_then(|o| o.get("id")), e)
-            }
+        print_err!("to core: {:?}", buf);
+        if let Ok(req) = serde_json::from_slice::<Request>(buf.as_bytes()) {
+            handle_req(req, &mut tabs);
         }
 
         buf.clear();

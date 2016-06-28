@@ -1,9 +1,15 @@
+#![feature(custom_derive, plugin)]
+#![plugin(serde_macros)]
+
+extern crate serde;
+extern crate serde_json;
+extern crate serde_macros;
+
 use std::io;
 use std::collections::BTreeMap;
 use std::io::Write;
 use std::error;
 use std::fmt;
-use serde_json;
 use serde_json::builder::ObjectBuilder;
 use serde_json::Value;
 
@@ -25,10 +31,10 @@ pub fn respond(result: &Value, id: Option<Value>)
                              .insert("id", id)
                              .insert("result", result)
                              .unwrap()) {
-            print_err!("error {} sending response to RPC {:?}", e, id);
+            // print_err!("error {} sending response to RPC {:?}", e, id);
         }
     } else {
-        print_err!("tried to respond with no id");
+        // print_err!("tried to respond with no id");
     }
 }
 
@@ -62,6 +68,7 @@ pub enum TabCommand {
 
 /// An enum representing an edit command, parsed from JSON.
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename="edit_command")]
 pub enum EditCommand {
     #[serde(rename="render_lines")]
     RenderLines { first_line: usize, last_line: usize },
@@ -112,6 +119,7 @@ pub enum EditCommand {
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename="edit_motion")]
 pub enum EditMotion {
     #[serde(rename="prev_char")]
     PrevChar,
@@ -135,4 +143,10 @@ pub enum EditMotion {
     // NextWordStart,
     // PrevWordEnd,
     // NextWordEnd,
+}
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn it_works() {
+    }
 }
