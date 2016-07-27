@@ -100,6 +100,8 @@ class EditView: NSView, NSTextInputClient {
     var cursorPos: (Int, Int)?
     var _selectedRange: NSRange
     var _markedRange: NSRange
+    
+    var frameRect: NSRect
 
     override init(frame frameRect: NSRect) {
         let font = CTFontCreateWithName("InconsolataGo", 14, nil)
@@ -114,11 +116,17 @@ class EditView: NSView, NSTextInputClient {
         updateQueue = dispatch_queue_create("com.levien.xi.update", DISPATCH_QUEUE_SERIAL)
         _selectedRange = NSMakeRange(NSNotFound, 0)
         _markedRange = NSMakeRange(NSNotFound, 0)
+        self.frameRect = frameRect
         super.init(frame: frameRect)
         widthConstraint = NSLayoutConstraint(item: self, attribute: .Width, relatedBy: .GreaterThanOrEqual, toItem: nil, attribute: .Width, multiplier: 1, constant: 400)
         widthConstraint!.active = true
         heightConstraint = NSLayoutConstraint(item: self, attribute: .Height, relatedBy: .GreaterThanOrEqual, toItem: nil, attribute: .Height, multiplier: 1, constant: 100)
         heightConstraint!.active = true
+    }
+    
+    override func resetCursorRects() {
+        super.resetCursorRects()
+        addCursorRect(frameRect, cursor: NSCursor.IBeamCursor())
     }
 
     required init?(coder: NSCoder) {
@@ -145,6 +153,10 @@ class EditView: NSView, NSTextInputClient {
     }
 
     let x0: CGFloat = 2;
+
+    let font_style_bold: Int = 1;
+    let font_style_underline: Int = 2;
+    let font_style_italic: Int = 4;
 
     override func drawRect(dirtyRect: NSRect) {
         super.drawRect(dirtyRect)
@@ -191,8 +203,35 @@ class EditView: NSView, NSTextInputClient {
                     let end = attr[2] as! Int
                     let u16_end = utf8_offset_to_utf16(s, end)
                     let fgcolor = colorFromArgb(UInt32(attr[3] as! Int))
+                    let font_style = attr[4] as! Int
                     //let fgcolor = colorFromArgb(0xff800000)
                     attrString.addAttribute(NSForegroundColorAttributeName, value: fgcolor, range: NSMakeRange(u16_start, u16_end - u16_start))
+                    if (font_style & font_style_underline) != 0 {
+                        attrString.addAttribute(NSUnderlineStyleAttributeName,
+                                                value: NSUnderlineStyle.StyleSingle.rawValue,
+                                                range: NSMakeRange(u16_start, u16_end - u16_start))
+                    }
+                    let fake_italic = true  // TODO: figure this out based on font support
+                    if fake_italic  && (font_style & font_style_italic) != 0 {
+                        attrString.addAttribute(NSObliquenessAttributeName,
+                                                value: 0.2,
+                                                range: NSMakeRange(u16_start, u16_end - u16_start))
+                    }
+                    let trait_mask = font_style_bold | (fake_italic ? 0 : font_style_italic)
+                    if (font_style & trait_mask) != 0 {
+                        var traits: NSFontTraitMask
+                        switch font_style & trait_mask {
+                        case font_style_bold:
+                            traits = NSFontTraitMask.BoldFontMask
+                        case font_style_italic:
+                            traits = NSFontTraitMask.ItalicFontMask
+                        case (font_style_bold | font_style_italic):
+                            traits = [NSFontTraitMask.BoldFontMask, NSFontTraitMask.ItalicFontMask]
+                        default:
+                            traits = []
+                        }
+                        attrString.applyFontTraits(traits, range: NSMakeRange(u16_start, u16_end - u16_start))
+                    }
                 }
             }
             if let c = cursor {
@@ -307,7 +346,7 @@ class EditView: NSView, NSTextInputClient {
             replacementRange.length = 0
         }
         for _ in 0..<aRange.length {
-            sendRpcAsync("delete_backward", params: [])
+            sendRpcAsync("delete_backward", params  : [])
         }
         if let attrStr = aString as? NSAttributedString {
             sendRpcAsync("insert", params: insertedStringToJson(attrStr.string))
@@ -596,14 +635,28 @@ class EditView: NSView, NSTextInputClient {
             return nil
         }
     }
+    
+    var isEmpty: Bool {
+        if height == 0 { return true }
+        if height > 1 { return false }
+        if let line = getLine(0) {
+            return line[0] as? String == ""
+        } else {
+            return true
+        }
+    }
 
     // MARK: - Debug Methods
 
     @IBAction func debugRewrap(sender: AnyObject) {
-        sendRpcAsync("debug_rewrap", params: []);
+        sendRpcAsync("debug_rewrap", params: [])
     }
 
     @IBAction func debugTestFGSpans(sender: AnyObject) {
-        sendRpcAsync("debug_test_fg_spans", params: []);
+        sendRpcAsync("debug_test_fg_spans", params: [])
+    }
+
+    @IBAction func debugRunPlugin(sender: AnyObject) {
+        sendRpcAsync("debug_run_plugin", params: [])
     }
 }

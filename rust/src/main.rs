@@ -17,7 +17,7 @@ extern crate serde_json;
 extern crate time;
 
 use std::io;
-use std::io::BufRead;
+
 use serde_json::Value;
 
 #[macro_use]
@@ -28,45 +28,40 @@ mod editor;
 mod view;
 mod linewrap;
 mod rpc;
+mod run_plugin;
 
 use tabs::Tabs;
 use rpc::Request;
 
 extern crate xi_rope;
 extern crate xi_unicode;
+extern crate xi_rpc;
 
-pub fn handle_req(request: Request, tabs: &mut Tabs) {
+use xi_rpc::{RpcLoop, RpcPeer};
+
+pub type MainPeer = RpcPeer<io::Stdout>;
+
+fn handle_req(request: Request, tabs: &mut Tabs, rpc_peer: MainPeer) -> Option<Value> {
     match request {
-        Request::TabCommand { id, tab_command } => {
-            if let Some(result) = tabs.do_rpc(tab_command) {
-                rpc::respond(&result, id);
-            } else if let Some(id) = id {
-                print_err!("RPC with id={:?} not responded", id);
-            }
-        }
+        Request::TabCommand { tab_command } => tabs.do_rpc(tab_command, rpc_peer)
     }
 }
 
-
 fn main() {
-    let stdin = io::stdin();
-    let mut stdin_handle = stdin.lock();
-    let mut buf = String::new();
     let mut tabs = Tabs::new();
+    let stdin = io::stdin();
+    let stdout = io::stdout();
+    let mut rpc_looper = RpcLoop::new(stdout);
+    let peer = rpc_looper.get_peer();
 
-    while stdin_handle.read_line(&mut buf).is_ok() {
-        if buf.is_empty() {
-            break;
-        }
-
-        if let Ok(data) = serde_json::from_slice::<Value>(buf.as_bytes()) {
-            print_err!("to core: {:?}", data);
-            match Request::from_json(&data) {
-                Ok(req) => handle_req(req, &mut tabs),
-                Err(e) => print_err!("RPC error with id={:?}: {}", data.as_object().and_then(|o| o.get("id")), e)
+    rpc_looper.mainloop(|| stdin.lock(),
+        |method, params| {
+        match Request::from_json(method, params) {
+            Ok(req) => handle_req(req, &mut tabs, peer.clone()),
+            Err(e) => {
+                print_err!("Error {} decoding RPC request {}", e, method);
+                None
             }
         }
-
-        buf.clear();
-    }
+    });
 }
